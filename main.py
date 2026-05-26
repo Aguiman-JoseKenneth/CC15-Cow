@@ -586,8 +586,7 @@ class FarmManagementSystem(QMainWindow):
         tag_id = self.table_cattle.item(row_index, 0).text()
 
         confirm = QMessageBox.question(
-            self, "Confirm Delete",
-            f"Are you sure you want to permanently remove the cattle {tag_id} from the list?",
+            self, "Confirm Delete",f"Are you sure you want to permanently remove the cattle {tag_id} from the list?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
 
@@ -623,8 +622,7 @@ class FarmManagementSystem(QMainWindow):
             return
 
         health_status = "Sick" if "Sick" in type_val else "Healthy"
-        milk_final = f"{milk.upper().replace('L', '')}L" if (
-                gender == "Female" and health_status == "Healthy") else "0L"
+        milk_final = f"{milk.upper().replace('L', '')}L" if (gender == "Female" and health_status == "Healthy") else "0L"
         if gender == "Male": milk_final = "N/A"
 
         connection = connect_to_database()
@@ -652,12 +650,20 @@ class FarmManagementSystem(QMainWindow):
     def get_new_product(self):
         ranges = self.table_harvest_cattle.selectedRanges()
         if not ranges:
-            QMessageBox.warning(self, "Selection Required",
-                                "Please select a live animal row from the harvest table view.")
+            QMessageBox.warning(self, "Selection Required","Please select a live animal row from the harvest table view.")
             return
 
         row_index = ranges[0].topRow()
         tag_id = self.table_harvest_cattle.item(row_index, 0).text()
+
+        health_status = self.table_harvest_cattle.item(row_index, 3).text().strip()
+        if health_status == "Sick":
+            QMessageBox.warning(
+                self, "Harvest Denied",
+                f"Cattle {tag_id} is currently classified as 'Sick'. "
+                f"You must administer veterinary care in the Livestock tab before processing this animal."
+            )
+            return
 
         selected_cow_milk_yield = self.table_harvest_cattle.item(row_index, 4).text().strip().upper()
 
@@ -670,6 +676,23 @@ class FarmManagementSystem(QMainWindow):
             QMessageBox.warning(self, "Incomplete Form", "Please fill in all product form entry fields.")
             return
 
+        if not qty.isdigit() or int(qty) <= 0:
+            QMessageBox.warning(self, "Validation Failure",
+                                "Batch Stock Output Quantity must be a valid positive whole number.")
+            return
+
+        clean_price_str = price.replace('₱', '').replace('$', '').replace(',', '').strip()
+        try:
+            price_val = float(clean_price_str)
+            if price_val <= 0:
+                raise ValueError("Price must be greater than zero.")
+        except ValueError:
+            QMessageBox.warning(self, "Validation Failure",
+                                "Target Unit Price Value must be a valid positive currency decimal number (e.g., 450.00).")
+            return
+
+        requested_qty = int(qty)
+
         if category == "Milk":
             # Strip out letters to get only a number
             clean_yield_str = "".join(char for char in selected_cow_milk_yield if char.isdigit())
@@ -679,8 +702,7 @@ class FarmManagementSystem(QMainWindow):
 
             if actual_yield_int <= 0 or "N/A" in selected_cow_milk_yield:
                 QMessageBox.warning(
-                    self, "Harvest Denied",
-                    f"Selected cattle {tag_id} cannot produce milk inventory because its active yield register status is '{selected_cow_milk_yield}'."
+                    self, "Harvest Denied",f"Selected cattle {tag_id} cannot produce milk inventory because its active yield register status is '{selected_cow_milk_yield}'."
                 )
                 return
             try:
@@ -748,8 +770,7 @@ class FarmManagementSystem(QMainWindow):
             self.in_sku_qty.clear()
             self.in_sku_price.clear()
 
-            QMessageBox.information(self, "Success",
-                                    f"Animal {tag_id} successfully processed into retail inventory.")
+            QMessageBox.information(self, "Success",f"Animal {tag_id} successfully processed into retail inventory.")
 
             connection.close()
 
@@ -758,8 +779,7 @@ class FarmManagementSystem(QMainWindow):
         quantity_input = self.in_sales_qty.text().strip()
 
         if not sku_target:
-            QMessageBox.warning(self, "Validation Failure",
-                                "No products available in inventory ledger storage to sell.")
+            QMessageBox.warning(self, "Validation Failure","No products available in inventory ledger storage to sell.")
             return
 
         if not quantity_input or not quantity_input.isdigit() or int(quantity_input) <= 0:
@@ -774,8 +794,7 @@ class FarmManagementSystem(QMainWindow):
         current_stock_qty = int(clean_stock_str) if clean_stock_str else 0
 
         if sell_qty > current_stock_qty:
-            QMessageBox.warning(self, "Stock Out Error",
-                                f"Inadequate inventory volume balances. Stock available: {current_stock_qty}")
+            QMessageBox.warning(self, "Stock Out Error",f"Inadequate inventory volume balances. Stock available: {current_stock_qty}")
             return
 
         unit_price = float(product["price"].replace('₱', '').replace('$', '').replace(',', '').strip())
@@ -791,8 +810,7 @@ class FarmManagementSystem(QMainWindow):
             if rem_qty <= 0:
                 cursor.execute("DELETE FROM product_inventory WHERE sku = %s", (sku_target,))
             else:
-                cursor.execute("UPDATE product_inventory SET stock = %s WHERE sku = %s",
-                                (f"{rem_qty} units", sku_target))
+                cursor.execute("UPDATE product_inventory SET stock = %s WHERE sku = %s",(f"{rem_qty} units", sku_target))
 
             query = "INSERT INTO sales (tx_id, sku, qty, total) VALUES (%s, %s, %s, %s)"
             cursor.execute(query, (new_tx_id, sku_target, f"{sell_qty} units", f"₱{calculated_gross:,.2f}"))
