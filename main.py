@@ -394,7 +394,6 @@ class FarmManagementSystem(QMainWindow):
         form.addRow("Select Target Stock SKU:", self.in_sales_sku)
         form.addRow("Transaction Sales Qty:", self.in_sales_qty)
 
-        # ✨ ADDED: Standard Conversion Helper Label Interface
         self.lbl_conversion_info = QLabel("Metric Rules:  1 Liter = 1 Unit  |  1 Kg = 1 Unit")
         self.lbl_conversion_info.setStyleSheet("color: #F59E0B; font-weight: bold; margin-top: 5px; font-size: 11px;")
         form.addRow("", self.lbl_conversion_info)
@@ -684,7 +683,6 @@ class FarmManagementSystem(QMainWindow):
         row_index = ranges[0].topRow()
         tag_id = self.table_harvest_cattle.item(row_index, 0).text()
 
-        # ✨ Extract explicit attributes to evaluate validation rule thresholds
         selected_cow_milk_yield = self.table_harvest_cattle.item(row_index, 4).text().strip().upper()
 
         sku = self.in_sku_name.text().strip()
@@ -738,11 +736,11 @@ class FarmManagementSystem(QMainWindow):
                     delete_query = "DELETE FROM cattle WHERE tag_id = %s"
                     cursor.execute(delete_query, (tag_id,))
                 else:
-                    # Calculate remaining milk capacity for this cow
+                    # Calculate remaining milk capacity for selected cow
                     rem_yield = actual_yield_int - requested_qty
                     new_yield_str = f"{rem_yield}L" if rem_yield > 0 else "0L"
 
-                    # Update the live cow's yield record in the database
+                    # Update live cow's yield record in the database
                     update_cow_query = "UPDATE cattle SET milk_yield = %s WHERE tag_id = %s"
                     cursor.execute(update_cow_query, (new_yield_str, tag_id))
 
