@@ -11,17 +11,13 @@ from PyQt6.QtGui import QFont, QColor
 
 
 def connect_to_database():
-    try:
-        return mysql.connector.connect(
-            host="localhost", #replace with ipv4 address, to find ipv4 address, use ipconfig in cmd)
-            user="root",
-            password="1234",
-            database="inventorydb"
+    connection = mysql.connector.connect(
+        host="localhost",  # replace with ipv4 address, to find ipv4 address, use ipconfig in cmd)
+        user="root",
+        password="1234",
+        database="inventorydb"
         )
-    except mysql.connector.Error as err:
-        print(f"Database Connection Error: {err}")
-        return None
-
+    return connection
 
 class FarmManagementSystem(QMainWindow):
     def __init__(self):
@@ -76,7 +72,7 @@ class FarmManagementSystem(QMainWindow):
         box_layout.addRow("Access Security Token:", self.login_pass)
 
         btn_login = QPushButton("Verify & Open Workspace")
-        btn_login.clicked.connect(self.execute_login_handshake)
+        btn_login.clicked.connect(self.execute_login_handshake) #pass the button click to function execute_login_handshake
         box_layout.addRow("", btn_login)
 
         layout.addWidget(box)
@@ -99,61 +95,58 @@ class FarmManagementSystem(QMainWindow):
 
         connection = connect_to_database()
         if connection:
-            try:
-                cursor = connection.cursor(dictionary=True)
-                query = "SELECT * FROM users WHERE username=%s and password=%s"
-                cursor.execute(query, (username, password))
-                result = cursor.fetchone()
+            cursor = connection.cursor(dictionary=True)
+            query = "SELECT * FROM users WHERE username=%s and password=%s"
+            cursor.execute(query, (username, password))
+            result = cursor.fetchone()
 
-                if result:
-                    QMessageBox.information(self, "Login Success", f"Welcome {username}!")
-                    self.current_user = result["username"]
-                    self.current_role = result["role"].capitalize()
+            if result:
+                QMessageBox.information(self, "Login Success", f"Welcome {username}!")
+                self.current_user = result["username"]
+                self.current_role = result["role"].capitalize()
 
-                    self.lbl_session_identity.setText(f"Session: {self.current_user} ({self.current_role})")
-                    self.log_action("Auth Engine", f"Successfully authenticated workspace access.")
+                self.lbl_session_identity.setText(f"Session: {self.current_user} ({self.current_role})")
+                self.log_action("Auth Engine", f"Successfully authenticated workspace access.")
 
-                    is_staff = (self.current_role == "Staff")
-                    is_admin = (self.current_role == "Admin")
+                is_staff = (self.current_role == "Staff")
+                is_admin = (self.current_role == "Admin")
 
-                    self.btn_commit_cattle.setDisabled(is_staff)
-                    self.btn_commit_product.setDisabled(is_staff)
-                    self.btn_medical_intervention.setDisabled(is_staff)
-                    self.btn_post_sale.setDisabled(is_staff)
-                    self.btn_remove_cow.setDisabled(is_staff)
+                self.btn_commit_cattle.setDisabled(is_staff)
+                self.btn_commit_product.setDisabled(is_staff)
+                self.btn_medical_intervention.setDisabled(is_staff)
+                self.btn_post_sale.setDisabled(is_staff)
+                self.btn_remove_cow.setDisabled(is_staff)
 
-                    self.in_tag_id.setDisabled(is_staff)
-                    self.in_cow_type.setDisabled(is_staff)
-                    self.in_gender.setDisabled(is_staff)
-                    self.in_milk.setDisabled(is_staff)
-                    self.combo_med_action.setDisabled(is_staff)
+                self.in_tag_id.setDisabled(is_staff)
+                self.in_cow_type.setDisabled(is_staff)
+                self.in_gender.setDisabled(is_staff)
+                self.in_milk.setDisabled(is_staff)
+                self.combo_med_action.setDisabled(is_staff)
 
-                    if is_staff:
-                        self.kpi_sales.hide()
-                    else:
-                        self.kpi_sales.show()
-
-                    self.tabs.setTabVisible(3, True)
-                    self.tabs.setTabVisible(4, not is_staff)
-                    self.tabs.setTabVisible(5, is_admin)
-
-                    self.load_cattle_from_db()
-                    self.load_products_from_db()
-                    self.load_sales_from_db()
-
-                    self.recalculate_system_metrics()
-                    self.refresh_cattle_table_render()
-                    self.refresh_cold_chain_table_render()
-                    self.refresh_sales_table_render()
-
-                    self.main_stack.setCurrentIndex(0)
-                    self.login_pass.clear()
+                if is_staff:
+                    self.kpi_sales.hide()
                 else:
-                    QMessageBox.critical(self, "Access Denied", "Invalid access tokens.")
-            except mysql.connector.Error as err:
-                QMessageBox.critical(self, "Query Error", f"Database error:\n{err}")
-            finally:
-                connection.close()
+                    self.kpi_sales.show()
+
+                self.tabs.setTabVisible(3, True)
+                self.tabs.setTabVisible(4, not is_staff)
+                self.tabs.setTabVisible(5, is_admin)
+
+                self.load_cattle_from_db()
+                self.load_products_from_db()
+                self.load_sales_from_db()
+
+                self.recalculate_system_metrics()
+                self.refresh_cattle_table_render()
+                self.refresh_cold_chain_table_render()
+                self.refresh_sales_table_render()
+
+                self.main_stack.setCurrentIndex(0)
+                self.login_pass.clear()
+            else:
+                QMessageBox.critical(self, "Access Denied", "Invalid access tokens.")
+
+            connection.close()
         else:
             QMessageBox.critical(self, "Database Error", "Unable to reach database server.")
 
@@ -421,7 +414,7 @@ class FarmManagementSystem(QMainWindow):
         layout.addWidget(box)
         self.tabs.addTab(tab, "System Security Audit")
 
-    def build_kpi_widget(self, label, val, bg_color, text_color="#FFFFFF"):
+    def build_kpi_widget(self, label, val, bg_color, text_color="#FFFFFF"): #main overview tab widgets "total female cattle, milk storage volume, storage mass, total sales revenue".
         card = QFrame()
         card.setStyleSheet(f"background-color: {bg_color}; border-radius: 6px;")
         card.setMinimumHeight(110)
@@ -450,39 +443,27 @@ class FarmManagementSystem(QMainWindow):
     def load_cattle_from_db(self):
         connection = connect_to_database()
         if connection:
-            try:
-                cursor = connection.cursor(dictionary=True)
-                query = "SELECT tag_id, cattle_type, gender, health, milk_yield FROM cattle"
-                cursor.execute(query)
-                self.cattle_ledger = cursor.fetchall()
-            except mysql.connector.Error as err:
-                QMessageBox.critical(self, "Database Error", str(err))
-            finally:
-                connection.close()
+            cursor = connection.cursor(dictionary=True)
+            query = "SELECT tag_id, cattle_type, gender, health, milk_yield FROM cattle"
+            cursor.execute(query)
+            self.cattle_ledger = cursor.fetchall()
+            connection.close()
 
     def load_products_from_db(self):
         connection = connect_to_database()
         if connection:
-            try:
-                cursor = connection.cursor(dictionary=True)
-                cursor.execute("SELECT sku, category, stock, price FROM product_inventory")
-                self.product_inventory = cursor.fetchall()
-            except mysql.connector.Error as err:
-                QMessageBox.critical(self, "Database Error", f"Failed to load products: {err}")
-            finally:
-                connection.close()
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("SELECT sku, category, stock, price FROM product_inventory")
+            self.product_inventory = cursor.fetchall()
+            connection.close()
 
     def load_sales_from_db(self):
         connection = connect_to_database()
         if connection:
-            try:
-                cursor = connection.cursor(dictionary=True)
-                cursor.execute("SELECT tx_id, sku, qty, total FROM sales")
-                self.sales = cursor.fetchall()
-            except mysql.connector.Error as err:
-                QMessageBox.critical(self, "Database Error", f"Failed to load sales: {err}")
-            finally:
-                connection.close()
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("SELECT tx_id, sku, qty, total FROM sales")
+            self.sales = cursor.fetchall()
+            connection.close()
 
     def recalculate_system_metrics(self):
         female_count = sum(1 for c in self.cattle_ledger if c["gender"] == "Female")
@@ -524,8 +505,6 @@ class FarmManagementSystem(QMainWindow):
         for target_table in [self.table_cattle, self.table_harvest_cattle]:
             target_table.setRowCount(0)
             for data in self.cattle_ledger:
-                if self.current_role == "Staff" and data["health"] == "Sick":
-                    continue
 
                 row = target_table.rowCount()
                 target_table.insertRow(row)
@@ -568,35 +547,34 @@ class FarmManagementSystem(QMainWindow):
 
         connection = connect_to_database()
         if connection:
-            try:
-                cursor = connection.cursor(dictionary=True)
-                fetch_query = "SELECT * FROM cattle WHERE tag_id = %s"
-                cursor.execute(fetch_query, (tag_id,))
-                target_bovine = cursor.fetchone()
+            cursor = connection.cursor(dictionary=True)
+            fetch_query = "SELECT * FROM cattle WHERE tag_id = %s"
+            cursor.execute(fetch_query, (tag_id,))
+            target_bovine = cursor.fetchone()
 
-                if not target_bovine:
-                    return
+            if not target_bovine:
+                return
 
-                if "Sick" not in target_bovine["cattle_type"]:
-                    QMessageBox.information(self, "Action Prevented", "This livestock element is already healthy.")
-                    return
+            if "Sick" not in target_bovine["cattle_type"]:
+                QMessageBox.information(self, "Action Prevented", "This livestock element is already healthy.")
+                return
 
-                if "Cure" in medical_choice:
-                    update_query = "UPDATE cattle SET health = %s WHERE tag_id = %s"
-                    cursor.execute(update_query, ("Healthy", tag_id))
-                    self.log_action("Vet Subsystem", f"Administered cure vector onto animal profile {tag_id}.")
-                    connection.commit()
-                else:
-                    delete_query = "DELETE FROM cattle WHERE tag_id = %s"
-                    cursor.execute(delete_query, (tag_id,))
-                    self.log_action("Cull System", f"Culled livestock {tag_id}.")
-                    connection.commit()
+            if "Cure" in medical_choice:
+                update_query = "UPDATE cattle SET health = %s WHERE tag_id = %s"
+                cursor.execute(update_query, ("Healthy", tag_id))
+                self.log_action("Vet Subsystem", f"Administered cure vector onto animal profile {tag_id}.")
+                connection.commit()
+            else:
+                delete_query = "DELETE FROM cattle WHERE tag_id = %s"
+                cursor.execute(delete_query, (tag_id,))
+                self.log_action("Cull System", f"Culled livestock {tag_id}.")
+                connection.commit()
 
-                self.load_cattle_from_db()
-                self.refresh_cattle_table_render()
-                self.recalculate_system_metrics()
-            finally:
-                connection.close()
+            self.load_cattle_from_db()
+            self.refresh_cattle_table_render()
+            self.recalculate_system_metrics()
+
+            connection.close()
 
     def remove_cattle(self):
         ranges = self.table_cattle.selectedRanges()
@@ -616,20 +594,19 @@ class FarmManagementSystem(QMainWindow):
         if confirm == QMessageBox.StandardButton.Yes:
             connection = connect_to_database()
             if connection:
-                try:
-                    cursor = connection.cursor(dictionary=True)
-                    query = "DELETE FROM cattle WHERE tag_id = %s"
-                    cursor.execute(query, (tag_id,))
-                    connection.commit()
+                cursor = connection.cursor(dictionary=True)
+                query = "DELETE FROM cattle WHERE tag_id = %s"
+                cursor.execute(query, (tag_id,))
+                connection.commit()
 
-                    self.log_action("Asset Eraser", f"Permanently removed and purged livestock node: {tag_id}")
-                    QMessageBox.information(self, "Removed", f"The Cattle {tag_id} is successfully removed.")
+                self.log_action("Asset Eraser", f"Permanently removed and purged livestock node: {tag_id}")
+                QMessageBox.information(self, "Removed", f"The Cattle {tag_id} is successfully removed.")
 
-                    self.load_cattle_from_db()
-                    self.refresh_cattle_table_render()
-                    self.recalculate_system_metrics()
-                finally:
-                    connection.close()
+                self.load_cattle_from_db()
+                self.refresh_cattle_table_render()
+                self.recalculate_system_metrics()
+
+                connection.close()
 
     def add_new_cattle(self):
         tag_id = self.in_tag_id.text().strip()
@@ -652,26 +629,25 @@ class FarmManagementSystem(QMainWindow):
 
         connection = connect_to_database()
         if connection:
-            try:
-                cursor = connection.cursor()
-                check_query = "SELECT * FROM cattle WHERE tag_id = %s"
-                cursor.execute(check_query, (tag_id,))
-                if cursor.fetchone():
-                    QMessageBox.warning(self, "Duplicate Error", f"Tag {tag_id} already exists.")
-                    return
+            cursor = connection.cursor()
+            check_query = "SELECT * FROM cattle WHERE tag_id = %s"
+            cursor.execute(check_query, (tag_id,))
+            if cursor.fetchone():
+                QMessageBox.warning(self, "Duplicate Error", f"Tag {tag_id} already exists.")
+                return
 
-                query = "INSERT INTO cattle (tag_id, cattle_type, gender, health, milk_yield) VALUES (%s, %s, %s, %s, %s)"
-                values = (tag_id, type_val, gender, health_status, milk_final)
-                cursor.execute(query, values)
-                connection.commit()
+            query = "INSERT INTO cattle (tag_id, cattle_type, gender, health, milk_yield) VALUES (%s, %s, %s, %s, %s)"
+            values = (tag_id, type_val, gender, health_status, milk_final)
+            cursor.execute(query, values)
+            connection.commit()
 
-                self.log_action("Herd Registry", f"Registered cattle profile {tag_id} under classification {type_val}.")
-                self.load_cattle_from_db()
-                self.refresh_cattle_table_render()
-                self.recalculate_system_metrics()
-                self.in_tag_id.clear()
-            finally:
-                connection.close()
+            self.log_action("Herd Registry", f"Registered cattle profile {tag_id} under classification {type_val}.")
+            self.load_cattle_from_db()
+            self.refresh_cattle_table_render()
+            self.recalculate_system_metrics()
+            self.in_tag_id.clear()
+
+            connection.close()
 
     def get_new_product(self):
         ranges = self.table_harvest_cattle.selectedRanges()
@@ -695,7 +671,7 @@ class FarmManagementSystem(QMainWindow):
             return
 
         if category == "Milk":
-            # Strip out letters like 'L' or 'N/A' to get a pure number
+            # Strip out letters to get only a number
             clean_yield_str = "".join(char for char in selected_cow_milk_yield if char.isdigit())
 
             # Convert to integer if digits exist, otherwise default to 0
@@ -728,58 +704,54 @@ class FarmManagementSystem(QMainWindow):
 
         connection = connect_to_database()
         if connection:
-            try:
-                cursor = connection.cursor()
-                connection.start_transaction()
+            cursor = connection.cursor()
+            connection.start_transaction()
 
-                if category != "Milk":
-                    delete_query = "DELETE FROM cattle WHERE tag_id = %s"
-                    cursor.execute(delete_query, (tag_id,))
-                else:
-                    # Calculate remaining milk capacity for selected cow
-                    rem_yield = actual_yield_int - requested_qty
-                    new_yield_str = f"{rem_yield}L" if rem_yield > 0 else "0L"
+            if category != "Milk":
+                delete_query = "DELETE FROM cattle WHERE tag_id = %s"
+                cursor.execute(delete_query, (tag_id,))
+            else:
+                # Calculate remaining milk capacity for selected cow
+                rem_yield = actual_yield_int - requested_qty
+                new_yield_str = f"{rem_yield}L" if rem_yield > 0 else "0L"
 
-                    # Update live cow's yield record in the database
-                    update_cow_query = "UPDATE cattle SET milk_yield = %s WHERE tag_id = %s"
-                    cursor.execute(update_cow_query, (new_yield_str, tag_id))
+                # Update live cow's yield record in the database
+                update_cow_query = "UPDATE cattle SET milk_yield = %s WHERE tag_id = %s"
+                cursor.execute(update_cow_query, (new_yield_str, tag_id))
 
-                    self.log_action("Harvest Line",f"Extracted {requested_qty} units of milk from {tag_id}. Remaining yield capacity: {new_yield_str}")
+                self.log_action("Harvest Line",f"Extracted {requested_qty} units of milk from {tag_id}. Remaining yield capacity: {new_yield_str}")
 
-                check_product_query = "SELECT stock FROM product_inventory WHERE sku = %s"
-                cursor.execute(check_product_query, (sku,))
-                existing_product = cursor.fetchone()
+            check_product_query = "SELECT stock FROM product_inventory WHERE sku = %s"
+            cursor.execute(check_product_query, (sku,))
+            existing_product = cursor.fetchone()
 
-                if existing_product:
-                    existing_qty = "".join(char for char in existing_product[0] if char.isdigit())
-                    new_qty_total = int(existing_qty if existing_qty else 0) + int(qty)
+            if existing_product:
+                existing_qty = "".join(char for char in existing_product[0] if char.isdigit())
+                new_qty_total = int(existing_qty if existing_qty else 0) + int(qty)
 
-                    update_stock_query = "UPDATE product_inventory SET stock = %s, price = %s WHERE sku = %s"
-                    cursor.execute(update_stock_query, (f"{new_qty_total} units", price, sku))
-                else:
-                    insert_query = "INSERT INTO product_inventory (sku, category, stock, price) VALUES (%s, %s, %s, %s)"
-                    cursor.execute(insert_query, (sku, category, f"{qty} units", price))
+                update_stock_query = "UPDATE product_inventory SET stock = %s, price = %s WHERE sku = %s"
+                cursor.execute(update_stock_query, (f"{new_qty_total} units", price, sku))
+            else:
+                insert_query = "INSERT INTO product_inventory (sku, category, stock, price) VALUES (%s, %s, %s, %s)"
+                cursor.execute(insert_query, (sku, category, f"{qty} units", price))
 
-                connection.commit()
-                self.log_action("Harvest Line", f"Harvested animal {tag_id} into retail inventory SKU stock: {sku}.")
+            connection.commit()
+            self.log_action("Harvest Line", f"Harvested animal {tag_id} into retail inventory SKU stock: {sku}.")
 
-                self.load_cattle_from_db()
-                self.load_products_from_db()
-                self.refresh_cattle_table_render()
-                self.refresh_cold_chain_table_render()
-                self.recalculate_system_metrics()
+            self.load_cattle_from_db()
+            self.load_products_from_db()
+            self.refresh_cattle_table_render()
+            self.refresh_cold_chain_table_render()
+            self.recalculate_system_metrics()
 
-                self.in_sku_name.clear()
-                self.in_sku_qty.clear()
-                self.in_sku_price.clear()
+            self.in_sku_name.clear()
+            self.in_sku_qty.clear()
+            self.in_sku_price.clear()
 
-                QMessageBox.information(self, "Success",
-                                        f"Animal {tag_id} successfully processed into retail inventory.")
-            except (mysql.connector.Error, ValueError) as err:
-                connection.rollback()
-                QMessageBox.critical(self, "Database Error", f"Harvest transaction roll-back initiated: {err}")
-            finally:
-                connection.close()
+            QMessageBox.information(self, "Success",
+                                    f"Animal {tag_id} successfully processed into retail inventory.")
+
+            connection.close()
 
     def submit_sales_transaction(self):
         sku_target = self.in_sales_sku.currentText()
@@ -812,39 +784,32 @@ class FarmManagementSystem(QMainWindow):
 
         connection = connect_to_database()
         if connection:
-            try:
-                cursor = connection.cursor()
-                connection.start_transaction()
+            cursor = connection.cursor()
+            connection.start_transaction()
 
-                rem_qty = current_stock_qty - sell_qty
-                if rem_qty <= 0:
-                    cursor.execute("DELETE FROM product_inventory WHERE sku = %s", (sku_target,))
-                else:
-                    cursor.execute("UPDATE product_inventory SET stock = %s WHERE sku = %s",
-                                   (f"{rem_qty} units", sku_target))
+            rem_qty = current_stock_qty - sell_qty
+            if rem_qty <= 0:
+                cursor.execute("DELETE FROM product_inventory WHERE sku = %s", (sku_target,))
+            else:
+                cursor.execute("UPDATE product_inventory SET stock = %s WHERE sku = %s",
+                                (f"{rem_qty} units", sku_target))
 
-                query = "INSERT INTO sales (tx_id, sku, qty, total) VALUES (%s, %s, %s, %s)"
-                cursor.execute(query, (new_tx_id, sku_target, f"{sell_qty} units", f"₱{calculated_gross:,.2f}"))
+            query = "INSERT INTO sales (tx_id, sku, qty, total) VALUES (%s, %s, %s, %s)"
+            cursor.execute(query, (new_tx_id, sku_target, f"{sell_qty} units", f"₱{calculated_gross:,.2f}"))
 
-                connection.commit()
-                self.log_action("Sales Engine",
-                                f"Executed order receipt {new_tx_id}. Gross value: ₱{calculated_gross:,.2f}")
+            connection.commit()
+            self.log_action("Sales Engine",f"Executed order receipt {new_tx_id}. Gross value: ₱{calculated_gross:,.2f}")
 
-                self.load_products_from_db()
-                self.load_sales_from_db()
-                self.refresh_cold_chain_table_render()
-                self.refresh_sales_table_render()
-                self.recalculate_system_metrics()
+            self.load_products_from_db()
+            self.load_sales_from_db()
+            self.refresh_cold_chain_table_render()
+            self.refresh_sales_table_render()
+            self.recalculate_system_metrics()
 
-                self.in_sales_qty.clear()
-                QMessageBox.information(self, "Order Dispatched",
-                                        f"Receipt {new_tx_id} successfully recorded and billed.")
-            except mysql.connector.Error as err:
-                connection.rollback()
-                QMessageBox.critical(self, "Database Error", f"Sales operation database fallback: {err}")
-            finally:
-                connection.close()
+            self.in_sales_qty.clear()
+            QMessageBox.information(self, "Order Dispatched",f"Receipt {new_tx_id} successfully recorded and billed.")
 
+            connection.close()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
