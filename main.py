@@ -13,7 +13,7 @@ from PyQt6.QtGui import QFont, QColor
 def connect_to_database():
     try:
         return mysql.connector.connect(
-            host="localhost",
+            host="localhost", #replace with ipv4 address, to find ipv4 address, use ipconfig in cmd)
             user="root",
             password="1234",
             database="inventorydb"
